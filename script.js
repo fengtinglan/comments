@@ -1,7 +1,13 @@
-// script.js
+// script.js (远程)
 (function() {
     function init() {
-        // ========== 读取本地页面提供的参数 ==========
+        // 检查 java 是否已注入，若未注入则稍等重试
+        if (typeof java === 'undefined') {
+            setTimeout(init, 500);
+            return;
+        }
+
+        // ========== 1. 读取本地页面提供的参数 ==========
         const params = window.__JJWXC_PARAMS__ || {};
         const bid = params.bid || '';
         const cid = params.cid || '';
@@ -10,15 +16,22 @@
         const isPara = pidParam !== null && pidParam !== undefined && !isNaN(Number(pidParam));
         const pid = isPara ? Number(pidParam) : null;
 
-        // ========== 主题初始化 ==========
-        const savedTheme = localStorage.getItem('jjwxc_theme') || 'default';
+        // ========== 2. 主题初始化（使用 java 存储） ==========
+        let savedTheme = 'default';
+        try {
+            savedTheme = java.get('jjwxc_theme') || 'default';
+        } catch(e) {}
         document.body.className = 'theme-' + savedTheme;
 
-        // ========== 排序初始化 ==========
-        let order = parseInt(params.order || localStorage.getItem('commentSort') || '0');
-        localStorage.setItem('commentSort', order);
+        // ========== 3. 排序初始化（使用 java 存储） ==========
+        let order = parseInt(params.order || '0');
+        try {
+            const storedOrder = java.get('commentSort');
+            if (storedOrder) order = parseInt(storedOrder);
+        } catch(e) {}
+        java.put('commentSort', order);
 
-        // ========== 全局变量 ==========
+        // ========== 4. 全局变量 ==========
         let currentUrl = '';
         let commentTotal = 0;
         let nocommentTotal = 0;
@@ -31,7 +44,7 @@
         const baseReplyUrl = 'https://android.jjwxc.net/comment/getReplyList';
         const baseQuery = `novelId=${bid}&chapterId=${cid}`;
 
-        // ========== 构建顶部栏 ==========
+        // ========== 5. 构建顶部栏 ==========
         function buildTabBar() {
             const tabBar = document.getElementById('tabBar');
             if (isPara) {
@@ -64,10 +77,8 @@
                         a.querySelector('i').className = 'fas';
                     }
                 });
-                // 段评接口
                 currentUrl = `https://app.jjwxc.org/app.jjwxc/android/reading/comment/getCommentList?versionCode=477&paragraph_id=${pid}&offset=0&paragraph=1&limit=100&commentSort=${order}&${baseQuery},{"headers":{"versiontype":"reading","versionCode":"477"}}`;
             } else {
-                // 非段评：章评/长评/加精三个 tab
                 tabBar.innerHTML = `
                     <div class="tab-btn active" data-type="comment">章评</div>
                     <div class="tab-btn" data-type="long">长评</div>
@@ -81,7 +92,6 @@
                         </div>
                     </div>
                 `;
-                // 设置排序勾选
                 document.querySelectorAll('#sortContent a').forEach(a => {
                     if (Number(a.dataset.order) === order) {
                         a.querySelector('i').className = 'fas fa-check';
@@ -89,7 +99,6 @@
                         a.querySelector('i').className = 'fas';
                     }
                 });
-                // 默认章评接口
                 currentUrl = `${baseCommentUrl}?versionCode=477&limit=50&offset=0&commentSort=${order}&${baseQuery}`;
                 if (vip == '1') {
                     currentUrl = `https://s8-static.jjwxc.net/comment_json.php?commentSort=${order}&chapterid=${cid}&novelid=${bid}&offset=0&limit=20`;
@@ -112,16 +121,9 @@
             }
         };
 
-        // ========== 工具函数 ==========
-        function replaceEmoticons(text) {
-            // 简单替换：将表情代码替换为占位，可根据需要扩展
-            return text || '';
-        }
-
-        function formatChineseText(text) {
-            // 简单格式化：保留原样
-            return text || '';
-        }
+        // ========== 6. 工具函数 ==========
+        function replaceEmoticons(text) { return text || ''; }
+        function formatChineseText(text) { return text || ''; }
 
         function passText(text) {
             const sre = '';
@@ -285,23 +287,6 @@
             return html;
         }
 
-        function createCommentHtml(JsonData) {
-            if (JsonData && typeof JsonData !== 'string') {
-                document.querySelector('.commentTotal').textContent = '共' + JsonData.commentTotal + '条评论';
-                let html = '';
-                if (page >= 2) html = '';
-                html = createHtml(JsonData.list, 'comment');
-                return html;
-            } else {
-                const loader = document.createElement('div');
-                loader.className = 'loading-more';
-                loader.style.cssText = 'text-align:center;padding:10px;color:#666;font-size:14px;';
-                loader.textContent = typeof JsonData === 'string' ? JsonData : '加载失败，点击重试';
-                loader.style.color = '#f00';
-                return loader.outerHTML;
-            }
-        }
-
         function loadUrl() {
             const JsonData = getJson(currentUrl);
             const html = createCommentHtml(JsonData);
@@ -321,6 +306,23 @@
                 wrongi = 3;
             }
             openReply();
+        }
+
+        function createCommentHtml(JsonData) {
+            if (JsonData && typeof JsonData !== 'string') {
+                document.querySelector('.commentTotal').textContent = '共' + JsonData.commentTotal + '条评论';
+                let html = '';
+                if (page >= 2) html = '';
+                html = createHtml(JsonData.list, 'comment');
+                return html;
+            } else {
+                const loader = document.createElement('div');
+                loader.className = 'loading-more';
+                loader.style.cssText = 'text-align:center;padding:10px;color:#666;font-size:14px;';
+                loader.textContent = typeof JsonData === 'string' ? JsonData : '加载失败，点击重试';
+                loader.style.color = '#f00';
+                return loader.outerHTML;
+            }
         }
 
         function openReply() {
@@ -358,7 +360,7 @@
             });
         }
 
-        // ========== 事件绑定 ==========
+        // ========== 7. 事件绑定 ==========
         function bindTabs() {
             if (isPara) return;
             document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -422,7 +424,7 @@
                     } else {
                         order = 2;
                     }
-                    localStorage.setItem('commentSort', order);
+                    java.put('commentSort', order);
                     currentUrl = currentUrl.replace(/offset=\d+/, 'offset=0').replace(/commentSort=\d+/, 'commentSort=' + order);
                     loadUrl();
                     java.longToast('切换至：' + sortText);
@@ -446,7 +448,7 @@
                 opt.addEventListener('click', function() {
                     const theme = this.dataset.theme;
                     document.body.className = 'theme-' + theme;
-                    localStorage.setItem('jjwxc_theme', theme);
+                    java.put('jjwxc_theme', theme);
                     document.getElementById('themePanel').classList.remove('show');
                 });
             });
@@ -514,12 +516,6 @@
         function fetchMoreComments() {
             return new Promise((resolve) => {
                 setTimeout(() => {
-                    const offsetMatch = currentUrl.match(/offset=(\d+)/);
-                    if (!offsetMatch) {
-                        if (vip == '1') {
-                            currentUrl = currentUrl.replace(/(chapterid=\d+&novelid=\d+)/, '$1&offset=0&limit=20');
-                        }
-                    }
                     const offset = Number(currentUrl.match(/offset=(\d+)/)?.[1] ?? 0);
                     const limit = Number(currentUrl.match(/limit=(\d+)/)?.[1] ?? 20);
                     const newOffset = offset + limit;
@@ -538,7 +534,7 @@
             });
         }
 
-        // ========== 初始化执行 ==========
+        // ========== 8. 执行初始化 ==========
         buildTabBar();
         bindTabs();
         bindSort();
@@ -547,9 +543,11 @@
         loadUrl();
     }
 
-    // 等待 DOM 加载完成
+    // 等待 DOM 和 java 注入完成
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', function() {
+            init();
+        });
     } else {
         init();
     }
