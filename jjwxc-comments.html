@@ -249,10 +249,8 @@
     </style>
 </head>
 <body>
-    <!-- 顶部标签栏：tab-bar 内容由脚本动态填充 -->
-    <div class="tab-bar" id="tabBar">
-        <!-- 脚本会根据 url 参数（pid 等）决定填充章评/长评/加精按钮，或段评原文展示 -->
-    </div>
+    <!-- 顶部标签栏 -->
+    <div class="tab-bar" id="tabBar"></div>
 
     <!-- 信息栏 -->
     <div style="box-shadow: 0 2px 8px rgba(0,0,0,0.1);position: fixed;top:50px;left:0;right:0;width:100%;font-size:10px;padding:5px;background:#e6f0fa;color:#4a89dc;border-radius:0px 0px 20px 20px;text-align:center">
@@ -273,22 +271,20 @@
     </div>
 
     <script>
-        // ========== 1. 从 URL 获取参数 ==========
-        const urlParams = new URLSearchParams(window.location.search);
-        const bid = urlParams.get('bid') || '';
-        const cid = urlParams.get('cid') || '';
-        let pid = urlParams.get('pid');               // 可能为 null 或字符串数字
-        const vip = urlParams.get('vip') || '0';
-        const isChapter = urlParams.get('chapter') === '1';   // true 表示章评模式
-        const initialOrder = urlParams.get('order') || '0';
-        const sreParam = urlParams.get('sre') || '';  // 屏蔽词正则片段（可选）
-
-        // 段评所需参数
-        const bookName = urlParams.get('bookName') || '';
-        const bookUrl = urlParams.get('bookUrl') || '';
-        const chapterTitle = urlParams.get('chapterTitle') || '';
-        const folderName = urlParams.get('folderName') || '';
-        const fileName = urlParams.get('fileName') || '';
+        // ========== 1. 从全局变量读取参数（由客户端注入） ==========
+        const params = window.__REVIEW_PARAMS__ || {};
+        const bid = params.bid || '';
+        const cid = params.cid || '';
+        let pid = params.pid || null;               // 可能为字符串数字或 null
+        const vip = params.vip || '0';
+        const isChapter = params.chapter === '1';   // true 表示章评模式
+        const initialOrder = params.order || '0';
+        const sreParam = params.sre || '';          // 屏蔽词正则片段（可选）
+        const bookName = params.bookName || '';
+        const bookUrl = params.bookUrl || '';
+        const chapterTitle = params.chapterTitle || '';
+        const folderName = params.folderName || '';
+        const fileName = params.fileName || '';
 
         // 将 pid 转为数字（若存在）
         let pidNum = null;
@@ -298,7 +294,7 @@
 
         // ========== 2. 初始化全局变量 ==========
         let r = "novelId=" + bid + "&chapterId=" + cid;
-        let sre = sreParam;   // 屏蔽词正则片段，可从 URL 传入
+        let sre = sreParam;
         let font_size = 12;
         let order = initialOrder;
         let commentTotal = 0;
@@ -325,7 +321,6 @@
                 // 段评模式：显示原文块 + 排序按钮
                 let ptext = '';
                 try {
-                    // 使用 java.importScript 读取本地缓存（需确保路径正确）
                     const path = `${folderName}/${fileName}`;
                     const raw = java.importScript("/../files/book_cache/" + path);
                     let list = String(raw).split("\n");
@@ -394,14 +389,10 @@
         buildTabBar();
 
         // ========== 4. 辅助函数 ==========
-        // 占位：替换表情符号的函数，可根据需要自定义
         function replaceEmoticons(text) {
-            // 示例：简单替换 [xxx] 为图片，或原样返回
             return text;
         }
-        // 占位：格式化中文文本（如添加缩进）
         function formatChineseText(text) {
-            // 示例：段首添加两个全角空格
             return text.replace(/<p>/g, '<p class="cp">');
         }
 
@@ -641,7 +632,6 @@
         }
 
         // ========== 6. 事件监听 ==========
-        // 标签切换
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 let n = this.textContent;
@@ -664,7 +654,6 @@
             });
         });
 
-        // 排序下拉
         const sortBtn = document.querySelector('.sort-btn');
         if (sortBtn) {
             sortBtn.addEventListener('click', function(e) {
@@ -687,7 +676,6 @@
                 if (/倒序/.test(sort)) order = 0;
                 else if (/正序/.test(sort)) order = 1;
                 else order = 2;
-                // 简单持久化到 localStorage（可选）
                 try { localStorage.setItem('commentSort', order); } catch (e) {}
                 currentUrl = currentUrl.replace(/offset=\d+/, 'offset=0').replace(/commentSort=\d+/, 'commentSort=' + order);
                 loadUrl();
@@ -710,7 +698,6 @@
             });
         }
 
-        // 滚动加载
         function checkScrollBottom() {
             if (isLoading || !hasMore) return;
             const lastComment = document.querySelector('.comment-item:last-of-type');
@@ -788,7 +775,6 @@
             scrollTimer = setTimeout(checkScrollBottom, 100);
         });
 
-        // 悬浮按钮
         document.querySelector('#top').addEventListener('click', function() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
