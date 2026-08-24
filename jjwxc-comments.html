@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>晋江评论</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* ========== 基础重置 ========== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif; line-height: 1.6; padding-top: 50px; padding-bottom: 60px; transition: all 0.4s ease; }
+
+        /* 默认主题（经典白） */
+        body { background-color: #f5f7fa; color: #2d3748; }
+        .tab-bar { position: fixed; top: 0; left: 0; right: 0; background: #fff; display: flex; min-height: 50px; border-bottom: 1px solid #e8e8e8; z-index: 100; align-items: center; }
+        .tab-btn { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #718096; position: relative; transition: all 0.3s; cursor: pointer; }
+        .tab-btn.active { color: #4a89dc; font-weight: 600; }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 40%; height: 3px; background: #4a89dc; border-radius: 3px 3px 0 0; }
+        .sort-dropdown { position: relative; margin: 9px 12px 0 0; }
+        .sort-btn { background: none; border: none; color: #718096; font-size: 16px; padding: 5px 10px; cursor: pointer; }
+        .sort-dropdown-content { display: none; position: absolute; right: 5px; min-width: 160px; background: #fff; box-shadow: 0 8px 16px rgba(0,0,0,0.1); border-radius: 4px; border: 1px solid #e8e8e8; z-index: 10; }
+        .sort-dropdown-content a { color: #2d3748; padding: 12px 16px; display: block; font-size: 14px; text-decoration: none; }
+        .sort-dropdown-content a:hover { background: #e6f0fa; }
+        .comments-info { position: fixed; top: 50px; left: 0; right: 0; font-size: 10px; padding: 5px; background: #e6f0fa; color: #4a89dc; text-align: center; z-index: 99; }
+        .comments-container { padding: 0 15px; margin-top: 80px; }
+        .comment-item { background: #fff; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .comment-header { display: flex; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .username { font-weight: 600; font-size: 11px; color: #4a89dc; margin-right: 10px; }
+        .badge { font-size: 10px; padding: 0 5px; border-radius: 4px; margin-right: 8px; font-weight: 500; }
+        .badge.primary { background: #e6f0fa; color: #4a89dc; }
+        .badge.accent { background: #fff0f0; color: #ff6b6b; }
+        .badge.gold { background: #fff8e6; color: #ffa502; }
+        .badge.gold img { height: 12px; }
+        .comment-info { display: flex; justify-content: space-between; }
+        .comment-meta { font-size: 10px; color: #718096; margin-top: 5px; }
+        .comment-content { font-size: 12px; margin-bottom: 10px; }
+        .comment-actions { display: flex; justify-content: flex-end; }
+        .action-btn { margin-left: 20px; font-size: 10px; color: #718096; }
+        .action-btn i { margin-right: 5px; }
+        .replies-section { margin-top: 15px; padding-left: 15px; border-left: 2px solid #e6f0fa; }
+        .reply-item { padding: 12px 0; border-bottom: 1px dashed #e8e8e8; }
+        .reply-add.hide { display: none; }
+        .reply-header { display: flex; align-items: center; margin-bottom: 5px; flex-wrap: wrap; }
+        .reply-label { background: #4a89dc; color: #fff; font-size: 10px; padding: 0 5px; border-radius: 3px; margin-right: 8px; }
+        .load-more-replies, .close-more-replies { font-size: 12px; color: #4a89dc; text-align: center; padding: 10px 0; cursor: pointer; }
+        .close-more-replies.hide, .load-more-replies.hide { display: none; }
+        .floating-btn { position: fixed; bottom: 30px; right: 15px; width: 30px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 20px; z-index: 100; color: #4a89dc; }
+        #top, #down { opacity: 0.4; cursor: pointer; }
+        #top:hover, #down:hover { opacity: 1; }
+        .theme-switcher { position: fixed; bottom: 95px; right: 15px; z-index: 101; }
+        .theme-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #4a89dc; background: #fff; cursor: pointer; font-size: 16px; color: #4a89dc; display: flex; align-items: center; justify-content: center; }
+        .theme-panel { display: none; position: fixed; bottom: 140px; right: 10px; background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 102; padding: 8px; max-height: 60vh; overflow-y: auto; width: 200px; }
+        .theme-panel.show { display: block; }
+        .theme-option { display: flex; align-items: center; padding: 8px 10px; cursor: pointer; border-radius: 4px; font-size: 13px; color: #2d3748; }
+        .theme-option:hover { background: #e6f0fa; }
+        .theme-option .color-dot { width: 20px; height: 20px; border-radius: 50%; margin-right: 10px; border: 1px solid rgba(0,0,0,0.1); }
+
+        /* ========== 深空黑 ========== */
+        body.theme-dark { background: #0d1117; color: #e0e0e0; }
+        body.theme-dark .tab-bar { background: #161b22; border-bottom: 1px solid #30363d; }
+        body.theme-dark .tab-btn { color: #8b949e; }
+        body.theme-dark .tab-btn.active { color: #58a6ff; }
+        body.theme-dark .tab-btn.active::after { background: #58a6ff; }
+        body.theme-dark .sort-btn { color: #8b949e; }
+        body.theme-dark .sort-dropdown-content { background: #161b22; border-color: #30363d; box-shadow: 0 8px 16px rgba(0,0,0,0.5); }
+        body.theme-dark .sort-dropdown-content a { color: #e0e0e0; }
+        body.theme-dark .sort-dropdown-content a:hover { background: #21262d; }
+        body.theme-dark .comments-info { background: #1f2937; color: #58a6ff; }
+        body.theme-dark .comment-item { background: #161b22; border: 1px solid #30363d; box-shadow: 0 0 8px rgba(88,166,255,0.1); }
+        body.theme-dark .username { color: #58a6ff; }
+        body.theme-dark .badge.primary { background: #1f2937; color: #58a6ff; }
+        body.theme-dark .badge.accent { background: #2d1b1b; color: #ff8080; }
+        body.theme-dark .badge.gold { background: #2d2a1a; color: #ffb84d; }
+        body.theme-dark .comment-meta { color: #8b949e; }
+        body.theme-dark .action-btn { color: #8b949e; }
+        body.theme-dark .replies-section { border-left-color: #30363d; }
+        body.theme-dark .reply-item { border-bottom-color: #30363d; }
+        body.theme-dark .reply-label { background: #58a6ff; color: #0d1117; }
+        body.theme-dark .load-more-replies, body.theme-dark .close-more-replies { color: #58a6ff; }
+        body.theme-dark .floating-btn { color: #58a6ff; }
+        body.theme-dark .theme-btn { border-color: #58a6ff; background: #161b22; color: #58a6ff; }
+        body.theme-dark .theme-panel { background: #161b22; border-color: #30363d; }
+        body.theme-dark .theme-option { color: #e0e0e0; }
+        body.theme-dark .theme-option:hover { background: #21262d; }
+
+        /* ========== 森林绿 ========== */
+        body.theme-green { background: #e8f5e9; color: #1b3a1b; font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+        body.theme-green .tab-bar { background: #f1f8f1; border-bottom: 2px solid #a5d6a7; }
+        body.theme-green .tab-btn { color: #558b2f; }
+        body.theme-green .tab-btn.active { color: #2e7d32; }
+        body.theme-green .tab-btn.active::after { background: #2e7d32; }
+        body.theme-green .sort-btn { color: #558b2f; }
+        body.theme-green .sort-dropdown-content { background: #f1f8f1; border-color: #a5d6a7; }
+        body.theme-green .sort-dropdown-content a { color: #1b3a1b; }
+        body.theme-green .sort-dropdown-content a:hover { background: #c8e6c9; }
+        body.theme-green .comments-info { background: #c8e6c9; color: #2e7d32; }
+        body.theme-green .comment-item { background: #ffffff; border-radius: 16px; border: 1px solid #c8e6c9; box-shadow: 0 4px 12px rgba(76,175,80,0.1); }
+        body.theme-green .username { color: #2e7d32; }
+        body.theme-green .badge.primary { background: #c8e6c9; color: #2e7d32; }
+        body.theme-green .badge.accent { background: #ffebee; color: #e53935; }
+        body.theme-green .badge.gold { background: #fff8e1; color: #f57c00; }
+        body.theme-green .comment-meta { color: #558b2f; }
+        body.theme-green .action-btn { color: #558b2f; }
+        body.theme-green .replies-section { border-left-color: #a5d6a7; }
+        body.theme-green .reply-item { border-bottom-color: #c8e6c9; }
+        body.theme-green .reply-label { background: #2e7d32; color: #fff; }
+        body.theme-green .load-more-replies, body.theme-green .close-more-replies { color: #2e7d32; }
+        body.theme-green .floating-btn { color: #2e7d32; }
+        body.theme-green .theme-btn { border-color: #2e7d32; background: #fff; color: #2e7d32; }
+        body.theme-green .theme-panel { background: #f1f8f1; border-color: #a5d6a7; }
+        body.theme-green .theme-option { color: #1b3a1b; }
+        body.theme-green .theme-option:hover { background: #c8e6c9; }
+
+        /* ========== 暖阳橙 ========== */
+        body.theme-warm { background: linear-gradient(135deg, #fef3e2 0%, #fff9f0 100%); color: #5d4037; }
+        body.theme-warm .tab-bar { background: #fffaf3; border-bottom: 1px solid #f0d9c0; }
+        body.theme-warm .tab-btn { color: #a1887f; }
+        body.theme-warm .tab-btn.active { color: #e07c5a; }
+        body.theme-warm .tab-btn.active::after { background: #e07c5a; }
+        body.theme-warm .sort-btn { color: #a1887f; }
+        body.theme-warm .sort-dropdown-content { background: #fffaf3; border-color: #f0d9c0; }
+        body.theme-warm .sort-dropdown-content a { color: #5d4037; }
+        body.theme-warm .sort-dropdown-content a:hover { background: #fde8df; }
+        body.theme-warm .comments-info { background: #fde8df; color: #e07c5a; }
+        body.theme-warm .comment-item { background: #ffffff; border-radius: 20px; border: 1px solid #f0d9c0; box-shadow: 0 6px 16px rgba(224,124,90,0.15); }
+        body.theme-warm .username { color: #e07c5a; }
+        body.theme-warm .badge.primary { background: #fde8df; color: #e07c5a; }
+        body.theme-warm .badge.accent { background: #ffebee; color: #e85d75; }
+        body.theme-warm .badge.gold { background: #fff3e0; color: #ff9800; }
+        body.theme-warm .comment-meta { color: #a1887f; }
+        body.theme-warm .action-btn { color: #a1887f; }
+        body.theme-warm .replies-section { border-left-color: #f0d9c0; }
+        body.theme-warm .reply-item { border-bottom-color: #f0d9c0; }
+        body.theme-warm .reply-label { background: #e07c5a; color: #fff; }
+        body.theme-warm .load-more-replies, body.theme-warm .close-more-replies { color: #e07c5a; }
+        body.theme-warm .floating-btn { color: #e07c5a; }
+        body.theme-warm .theme-btn { border-color: #e07c5a; background: #fff; color: #e07c5a; }
+        body.theme-warm .theme-panel { background: #fffaf3; border-color: #f0d9c0; }
+        body.theme-warm .theme-option { color: #5d4037; }
+        body.theme-warm .theme-option:hover { background: #fde8df; }
+
+        /* ========== 暗夜紫 ========== */
+        body.theme-purple { background: #1a1025; color: #e0d9f0; }
+        body.theme-purple .tab-bar { background: #221830; border-bottom: 1px solid #3a2a4a; }
+        body.theme-purple .tab-btn { color: #9b7edb; }
+        body.theme-purple .tab-btn.active { color: #b39ddb; }
+        body.theme-purple .tab-btn.active::after { background: #b39ddb; }
+        body.theme-purple .sort-btn { color: #9b7edb; }
+        body.theme-purple .sort-dropdown-content { background: #221830; border-color: #3a2a4a; }
+        body.theme-purple .sort-dropdown-content a { color: #e0d9f0; }
+        body.theme-purple .sort-dropdown-content a:hover { background: #2f2140; }
+        body.theme-purple .comments-info { background: #2f2140; color: #b39ddb; }
+        body.theme-purple .comment-item { background: rgba(34,24,48,0.8); border: 1px solid #3a2a4a; border-radius: 12px; box-shadow: 0 4px 20px rgba(155,126,219,0.2); backdrop-filter: blur(5px); }
+        body.theme-purple .username { color: #b39ddb; }
+        body.theme-purple .badge.primary { background: #2f2140; color: #b39ddb; }
+        body.theme-purple .badge.accent { background: #3a1f2d; color: #ff6b9d; }
+        body.theme-purple .badge.gold { background: #3a2f1a; color: #ffb84d; }
+        body.theme-purple .comment-meta { color: #9b7edb; }
+        body.theme-purple .action-btn { color: #9b7edb; }
+        body.theme-purple .replies-section { border-left-color: #3a2a4a; }
+        body.theme-purple .reply-item { border-bottom-color: #3a2a4a; }
+        body.theme-purple .reply-label { background: #b39ddb; color: #1a1025; }
+        body.theme-purple .load-more-replies, body.theme-purple .close-more-replies { color: #b39ddb; }
+        body.theme-purple .floating-btn { color: #b39ddb; }
+        body.theme-purple .theme-btn { border-color: #b39ddb; background: #221830; color: #b39ddb; }
+        body.theme-purple .theme-panel { background: #221830; border-color: #3a2a4a; }
+        body.theme-purple .theme-option { color: #e0d9f0; }
+        body.theme-purple .theme-option:hover { background: #2f2140; }
+
+        /* ========== 极简线框 ========== */
+        body.theme-minimal { background: #ffffff; color: #111; }
+        body.theme-minimal .tab-bar { background: #fff; border-bottom: 1px solid #ccc; box-shadow: none; }
+        body.theme-minimal .tab-btn { color: #555; }
+        body.theme-minimal .tab-btn.active { color: #111; font-weight: 700; }
+        body.theme-minimal .tab-btn.active::after { background: #111; height: 2px; }
+        body.theme-minimal .sort-btn { color: #555; }
+        body.theme-minimal .sort-dropdown-content { background: #fff; border: 1px solid #ccc; box-shadow: none; }
+        body.theme-minimal .sort-dropdown-content a { color: #111; }
+        body.theme-minimal .sort-dropdown-content a:hover { background: #f5f5f5; }
+        body.theme-minimal .comments-info { background: #f5f5f5; color: #111; border-bottom: 1px solid #ccc; }
+        body.theme-minimal .comment-item { background: #fff; border: none; border-bottom: 1px solid #ccc; border-radius: 0; box-shadow: none; padding: 12px 0; margin-bottom: 0; }
+        body.theme-minimal .username { color: #111; }
+        body.theme-minimal .badge.primary { background: #e0e0e0; color: #111; }
+        body.theme-minimal .badge.accent { background: #f0f0f0; color: #111; }
+        body.theme-minimal .badge.gold { background: #f0f0f0; color: #111; }
+        body.theme-minimal .comment-meta { color: #555; }
+        body.theme-minimal .action-btn { color: #555; }
+        body.theme-minimal .replies-section { border-left: 1px solid #ccc; }
+        body.theme-minimal .reply-item { border-bottom: 1px dashed #ccc; }
+        body.theme-minimal .reply-label { background: #111; color: #fff; }
+        body.theme-minimal .load-more-replies, body.theme-minimal .close-more-replies { color: #111; }
+        body.theme-minimal .floating-btn { color: #111; }
+        body.theme-minimal .theme-btn { border-color: #111; background: #fff; color: #111; border-radius: 4px; }
+        body.theme-minimal .theme-panel { background: #fff; border: 1px solid #ccc; }
+        body.theme-minimal .theme-option { color: #111; }
+        body.theme-minimal .theme-option:hover { background: #f5f5f5; }
+
+        /* ========== 杂志风 ========== */
+        body.theme-magazine { background: #faf8f5; color: #333; font-family: Georgia, 'Times New Roman', serif; }
+        body.theme-magazine .tab-bar { background: #faf8f5; border-bottom: 2px solid #333; }
+        body.theme-magazine .tab-btn { color: #777; font-family: Georgia, serif; font-size: 18px; }
+        body.theme-magazine .tab-btn.active { color: #333; font-weight: bold; }
+        body.theme-magazine .tab-btn.active::after { background: #333; height: 2px; width: 60%; }
+        body.theme-magazine .sort-btn { color: #777; font-size: 18px; }
+        body.theme-magazine .sort-dropdown-content { background: #faf8f5; border: 1px solid #ccc; }
+        body.theme-magazine .sort-dropdown-content a { color: #333; font-family: Georgia, serif; }
+        body.theme-magazine .sort-dropdown-content a:hover { background: #eee; }
+        body.theme-magazine .comments-info { background: #faf8f5; color: #333; border-bottom: 1px solid #ccc; font-family: Georgia, serif; }
+        body.theme-magazine .comment-item { background: #fff; border: 1px solid #ddd; border-radius: 4px; box-shadow: 2px 2px 0 rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; }
+        body.theme-magazine .username { color: #333; font-size: 13px; }
+        body.theme-magazine .badge.primary { background: #eee; color: #333; }
+        body.theme-magazine .badge.accent { background: #f0e6e6; color: #a33; }
+        body.theme-magazine .badge.gold { background: #f5f0e0; color: #a67c00; }
+        body.theme-magazine .comment-meta { color: #777; font-size: 11px; }
+        body.theme-magazine .comment-content { font-size: 15px; line-height: 1.8; }
+        body.theme-magazine .action-btn { color: #777; }
+        body.theme-magazine .replies-section { border-left: 2px solid #ddd; }
+        body.theme-magazine .reply-item { border-bottom: 1px dashed #ddd; }
+        body.theme-magazine .reply-label { background: #333; color: #fff; }
+        body.theme-magazine .load-more-replies, body.theme-magazine .close-more-replies { color: #333; }
+        body.theme-magazine .floating-btn { color: #333; }
+        body.theme-magazine .theme-btn { border-color: #333; background: #faf8f5; color: #333; }
+        body.theme-magazine .theme-panel { background: #faf8f5; border-color: #ccc; }
+        body.theme-magazine .theme-option { color: #333; font-family: Georgia, serif; }
+        body.theme-magazine .theme-option:hover { background: #eee; }
+
+        /* ========== 玻璃拟态 ========== */
+        body.theme-glass { background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 50%, #d4fc79 100%); color: #2c3e50; }
+        body.theme-glass .tab-bar { background: rgba(255,255,255,0.3); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.5); }
+        body.theme-glass .tab-btn { color: rgba(44,62,80,0.7); }
+        body.theme-glass .tab-btn.active { color: #2c3e50; font-weight: 600; }
+        body.theme-glass .tab-btn.active::after { background: #2c3e50; }
+        body.theme-glass .sort-btn { color: rgba(44,62,80,0.7); }
+        body.theme-glass .sort-dropdown-content { background: rgba(255,255,255,0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.8); }
+        body.theme-glass .sort-dropdown-content a { color: #2c3e50; }
+        body.theme-glass .sort-dropdown-content a:hover { background: rgba(255,255,255,0.4); }
+        body.theme-glass .comments-info { background: rgba(255,255,255,0.4); backdrop-filter: blur(10px); color: #2c3e50; }
+        body.theme-glass .comment-item { background: rgba(255,255,255,0.4); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.6); border-radius: 20px; box-shadow: 0 8px 32px rgba(31,38,135,0.2); }
+        body.theme-glass .username { color: #2c3e50; }
+        body.theme-glass .badge.primary { background: rgba(255,255,255,0.5); color: #2c3e50; }
+        body.theme-glass .badge.accent { background: rgba(255,100,100,0.2); color: #e74c3c; }
+        body.theme-glass .badge.gold { background: rgba(255,200,0,0.2); color: #b8860b; }
+        body.theme-glass .comment-meta { color: rgba(44,62,80,0.7); }
+        body.theme-glass .action-btn { color: rgba(44,62,80,0.7); }
+        body.theme-glass .replies-section { border-left-color: rgba(255,255,255,0.6); }
+        body.theme-glass .reply-item { border-bottom-color: rgba(255,255,255,0.4); }
+        body.theme-glass .reply-label { background: rgba(44,62,80,0.8); color: #fff; }
+        body.theme-glass .load-more-replies, body.theme-glass .close-more-replies { color: #2c3e50; }
+        body.theme-glass .floating-btn { color: #2c3e50; }
+        body.theme-glass .theme-btn { border-color: #2c3e50; background: rgba(255,255,255,0.3); color: #2c3e50; }
+        body.theme-glass .theme-panel { background: rgba(255,255,255,0.6); backdrop-filter: blur(10px); border-color: rgba(255,255,255,0.8); }
+        body.theme-glass .theme-option { color: #2c3e50; }
+        body.theme-glass .theme-option:hover { background: rgba(255,255,255,0.4); }
+
+        /* 响应式 */
+        @media (max-width: 600px) {
+            .tab-btn { font-size: 14px; }
+            .comment-content { font-size: 11px; }
+            body.theme-magazine .comment-content { font-size: 13px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="tab-bar" id="tabBar"></div>
+    <div class="comments-info">
+        <span class="commentTotal">共0条评论</span>
+        <span class="page">已显示0条</span>
+        <span class="nopage">屏蔽0条</span>
+    </div>
+    <div class="comments-container" id="commentsContainer">
+        <div style="text-align:center;padding:10px;color:#666;font-size:14px;" class="loading">加载中......</div>
+    </div>
+    <div class="floating-btn">
+        <div id="top"><i class="fa fa-arrow-circle-up"></i></div>
+        <div id="down"><i class="fa fa-arrow-circle-down"></i></div>
+    </div>
+    <div class="theme-switcher">
+        <button class="theme-btn" id="themeToggle"><i class="fas fa-palette"></i></button>
+    </div>
+    <div class="theme-panel" id="themePanel">
+        <div class="theme-option" data-theme="default"><span class="color-dot" style="background:#f5f7fa;"></span>经典白</div>
+        <div class="theme-option" data-theme="dark"><span class="color-dot" style="background:#0d1117;"></span>深空黑</div>
+        <div class="theme-option" data-theme="green"><span class="color-dot" style="background:#e8f5e9;"></span>森林绿</div>
+        <div class="theme-option" data-theme="warm"><span class="color-dot" style="background:#fef3e2;"></span>暖阳橙</div>
+        <div class="theme-option" data-theme="purple"><span class="color-dot" style="background:#1a1025;"></span>暗夜紫</div>
+        <div class="theme-option" data-theme="minimal"><span class="color-dot" style="background:#ffffff;"></span>极简线框</div>
+        <div class="theme-option" data-theme="magazine"><span class="color-dot" style="background:#faf8f5;"></span>杂志风</div>
+        <div class="theme-option" data-theme="glass"><span class="color-dot" style="background:linear-gradient(135deg,#a1c4fd,#c2e9fb);"></span>玻璃拟态</div>
+    </div>
+
+    <script>
+    (function() {
+        // ========== 1. 解析 URL 参数 ==========
+        const params = new URLSearchParams(window.location.search);
+        const bid = params.get('bid') || '';
+        const cid = params.get('cid') || '';
+        const pidParam = params.get('pid');
+        const vip = params.get('vip') || '0';
+        const isPara = pidParam !== null && !isNaN(Number(pidParam));
+        const pid = isPara ? Number(pidParam) : null;
+
+        // ========== 2. 主题初始化 ==========
+        const savedTheme = localStorage.getItem('jjwxc_theme') || 'default';
+        document.body.className = 'theme-' + savedTheme;
+
+        // ========== 3. 全局变量 ==========
+        let order = parseInt(params.get('order') || localStorage.getItem('commentSort') || '0');
+        localStorage.setItem('commentSort', order);
+        let currentUrl = '';
+        let commentTotal = 0;
+        let nocommentTotal = 0;
+        let isLoading = false;
+        let page = 1;
+        let hasMore = true;
+        let pageTotal = 1;
+        let wrongi = 3;
+        const baseCommentUrl = 'https://android.jjwxc.net/comment/getCommentList';
+        const baseReplyUrl = 'https://android.jjwxc.net/comment/getReplyList';
+        const baseQuery = `novelId=${bid}&chapterId=${cid}`;
+
+        function buildTabBar() {
+            const tabBar = document.getElementById('tabBar');
+            if (isPara) {
+                const ptext = java.get('ptext') || '';
+                const ytext = java.get('ytext') || '';
+                tabBar.innerHTML = `
+                    <div class="p" style="font-size:12px;margin-top:2px;margin-left:12px;display:flex;align-items:center;background:var(--card-bg, #fff);overflow:auto;max-height:80px" onclick="toggleParaText(this)">
+                        <p class="p1" style="margin:0;padding:0;">
+                            <a style="color:var(--primary-dark, #4a89dc);font-weight:bold;">原文：</a>${ptext}
+                        </p>
+                        <p class="p2" style="margin-top:3px;padding:0;display:none;">
+                            <a style="color:var(--primary-dark, #4a89dc);font-weight:bold;">原文：</a>${ytext}
+                        </p>
+                    </div>
+                    <div class="sort-dropdown" id="sortDropdown">
+                        <button class="sort-btn"><i class="fas fa-sort"></i></button>
+                        <div class="sort-dropdown-content" id="sortContent">
+                            <a href="#" data-order="1"><i class="fas fa-check"></i>按回复时间正序</a>
+                            <a href="#" data-order="0"><i class="fas fa-check"></i>按回复时间倒序</a>
+                            <a href="#" data-order="2"><i class="fas fa-check"></i>按点赞数量排序</a>
+                        </div>
+                    </div>
+                `;
+                document.querySelectorAll('#sortContent a').forEach(a => {
+                    if (Number(a.dataset.order) === order) a.querySelector('i').className = 'fas fa-check';
+                    else a.querySelector('i').className = 'fas';
+                });
+                currentUrl = `https://app.jjwxc.org/app.jjwxc/android/reading/comment/getCommentList?versionCode=477&paragraph_id=${pid}&offset=0&paragraph=1&limit=100&commentSort=${order}&${baseQuery},{"headers":{"versiontype":"reading","versionCode":"477"}}`;
+            } else {
+                tabBar.innerHTML = `
+                    <div class="tab-btn active" data-type="comment">章评</div>
+                    <div class="tab-btn" data-type="long">长评</div>
+                    <div class="tab-btn" data-type="featured">加精</div>
+                    <div class="sort-dropdown" id="sortDropdown">
+                        <button class="sort-btn"><i class="fas fa-sort"></i></button>
+                        <div class="sort-dropdown-content" id="sortContent">
+                            <a href="#" data-order="1"><i class="fas fa-check"></i>按回复时间正序</a>
+                            <a href="#" data-order="0"><i class="fas fa-check"></i>按回复时间倒序</a>
+                            <a href="#" data-order="2"><i class="fas fa-check"></i>按点赞数量排序</a>
+                        </div>
+                    </div>
+                `;
+                document.querySelectorAll('#sortContent a').forEach(a => {
+                    if (Number(a.dataset.order) === order) a.querySelector('i').className = 'fas fa-check';
+                    else a.querySelector('i').className = 'fas';
+                });
+                currentUrl = `${baseCommentUrl}?versionCode=477&limit=50&offset=0&commentSort=${order}&${baseQuery}`;
+                if (vip == '1') {
+                    currentUrl = `https://s8-static.jjwxc.net/comment_json.php?commentSort=${order}&chapterid=${cid}&novelid=${bid}&offset=0&limit=20`;
+                }
+            }
+        }
+
+        window.toggleParaText = function(el) {
+            const p1 = el.querySelector('.p1');
+            const p2 = el.querySelector('.p2');
+            if (p1.style.display !== 'none') {
+                p1.style.display = 'none';
+                p2.style.display = 'block';
+                el.style.alignItems = 'flex-start';
+            } else {
+                p1.style.display = 'block';
+                p2.style.display = 'none';
+                el.style.alignItems = 'center';
+            }
+        };
+
+        function replaceEmoticons(text) { return text || ''; }
+        function formatChineseText(text) { return text || ''; }
+        function passText(text) {
+            const sre = '';
+            let zi = String.raw`|为营造更好的评论环境|(?:^\[[^\]]+?\]\s*(?:嗑到了|kswl)\s*$)`;
+            let regStr = sre ? sre + zi : zi.replace(/^\|/, '');
+            const regex = regStr ? new RegExp(regStr.replace(/#|＃/g, '|')) : false;
+            return regex ? regex.test(text) : false;
+        }
+
+        function getJson(url) {
+            try {
+                const limitMatch = url.match(/limit=(\d+)/);
+                const limit = limitMatch ? Number(limitMatch[1]) : 20;
+                const dataStr = String(java.ajax(url));
+                const JsonData = JSON.parse(dataStr || '{}');
+                const data = JsonData?.data ?? JsonData?.body ?? {};
+                let r = {};
+                let cTotal = Number(data?.commentTotal ?? 20);
+                pageTotal = Math.ceil(cTotal / limit);
+                r.commentTotal = cTotal;
+                let commentList = [];
+
+                if (data.commentList === undefined && JsonData.body === undefined) {
+                    return JsonData?.message ? JsonData.message : false;
+                }
+
+                const clist = data?.commentList ?? data;
+                for (let i = 0; i < clist.length; i++) {
+                    const x = clist[i];
+                    const passtext = /营养液|地雷|手榴弹|火箭炮|浅水炸弹|霸王票|深水鱼雷|kswl|嗑到了/;
+                    if ((x.isdel == 22 && passtext.test(x.commentBody ?? x.commentbody)) || passText(x.commentBody ?? x.commentbody)) {
+                        nocommentTotal++;
+                        continue;
+                    }
+                    let chaptername = isPara ? '' : (vip == '1' ? '💰' : '') + '•';
+                    let comment = {};
+                    comment.meta = chaptername + (x.commentMark ?? x.commentmark) + '分•' + (x.commentDate ?? x.reply_date) + '•' + x.ip_pos;
+                    comment.content = (x.commentBody ?? x.commentbody ?? '').replace(/href=.*?novelDetail.*?novelid":"(\d+)".*?>/g, function(m, r) {
+                        const href = ` legado://import/addToBookshelf?src=${encodeURIComponent('http://app-cdn.jjwxc.net/androidapi/novelbasicinfo?novelId=' + r)}`;
+                        return 'href="' + href + '">';
+                    });
+                    comment.username = x.commentAuthor ?? x.commentauthor;
+                    comment.disagreenum = x.disagreenum;
+                    comment.agreenum = x.agreenum;
+                    let top = x.bulletinComment == 1 ? '公告' : ((x.is_top == 1 || x.is_king_top == 1 || x.is_reader_top == 1 || x.is_admin_top == 1) ? '置顶' : '');
+                    if (top) comment.top = top;
+                    comment.isAuthor = x.isAuthor;
+                    comment.icon = x.subscriptionicon;
+                    comment.rate = x.subscriptionrate || ((x.subscriptionicon ?? '').match(/<.*>/)?.[0] ?? '');
+                    comment.replyNum = x.replyTotal ?? x.reply_total ?? 0;
+                    comment.id = x.commentId ?? x.commentid;
+                    comment.author_agree = x.author_agree;
+                    comment.belike = x.beLike ?? x.belike;
+                    comment.cid = x.chapterId;
+                    comment.vip = x.is_vip_chapter == 1 ? '💰' : '';
+                    if (comment.replyNum > 0) {
+                        comment.list = (x.replyAll ?? x.reply) ? getReplyJson(x.replyAll ?? x.reply) : [];
+                    }
+                    commentList.push(comment);
+                }
+
+                commentTotal += commentList.length;
+                if (commentList[0]?.top == '公告' && page > 1) commentTotal--;
+                document.querySelector('.page').textContent = '已显示' + commentTotal + '条';
+                document.querySelector('.nopage').textContent = '屏蔽' + nocommentTotal + '条';
+                r.list = commentList;
+                return r;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function getReplyJson(data) {
+            try {
+                if (/^http/.test(data)) {
+                    data = java.ajax(data);
+                    data = JSON.parse(data || '{}')?.data ?? [];
+                }
+                let replyList = [];
+                for (let i in data) {
+                    const x = data[i];
+                    if (passText(x.replyBody)) continue;
+                    let reply = {};
+                    reply.meta = x.floor + '楼•' + (x.replyDate ?? x.commentdate) + '•' + x.ip_pos;
+                    reply.content = x.replyBody ?? x.commentbody;
+                    reply.username = x.replyAuthor ?? x.commentauthor;
+                    reply.disagreenum = x.disagreenum;
+                    reply.agreenum = x.agreenum;
+                    reply.isAuthor = x.isAuthor;
+                    reply.icon = x.subscriptionicon;
+                    reply.rate = x.subscriptionrate || (x.subscriptionicon.match(/<.*>/)?.[0] ?? '');
+                    replyList.push(reply);
+                }
+                return replyList;
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function createHtml(JsonData, t, type) {
+            let html = '';
+            for (let i in JsonData) {
+                const x = JsonData[i];
+                if (page >= 2 && x.top) continue;
+                let replyHtml = '';
+                if (x.list && x.list.length > 0) {
+                    let openReply = '';
+                    if (x.replyNum > 5) {
+                        openReply = `<div class="load-more-replies" data-id="${x.id}" data-num="5">
+                            <i class="fa fa-angle-double-down"></i> 共${x.replyNum}条回复 还剩${x.replyNum - 5}条回复</div>
+                        <div class="close-more-replies hide"><i class="fa fa-angle-double-up"></i> 收起回复</div>`;
+                    }
+                    replyHtml = `<div class="replies-section">
+                        ${createHtml(x.list, 'reply')}
+                        ${openReply}
+                    </div>`;
+                }
+                let user_badges = '';
+                if (x.top) {
+                    user_badges = `<div class="user-badges">
+                        <div class="badge primary">${x.top}</div>
+                        <div class="badge accent">展开</div>
+                    </div>`;
+                } else if (x.icon || x.rate) {
+                    user_badges = `<div class="user-badges">
+                        <div class="badge gold">
+                            ${x.rate.replace(/src=\/\//g, 'src=https://').replace(/style='.*?'/, 'style="display:inline-block;margin-top:3px"') || '100%'}
+                        </div>
+                    </div>`;
+                }
+                let info = '';
+                if (x.agreenum >= 0) {
+                    info = `<div class="comment-info">
+                        <div class="comment-meta">${(x.meta ?? '').replace(/•$/, '')}</div>
+                        <div class="comment-actions">
+                            <div class="action-btn"><i class="far fa-thumbs-up"></i> ${x.agreenum}</div>
+                            <div class="action-btn"><i class="far fa-thumbs-down"></i> ${x.disagreenum}</div>
+                        </div>
+                    </div>`;
+                }
+                let author_agree = '';
+                if (x.author_agree == 1 || x.belike == 1) {
+                    author_agree = `<div class="like" style="flex:1;text-align:right"><div class="badge" style="background:#E9F3EE;color:#6CAB8D;display:inline-block;">${x.belike == 1 ? '精' : '作者点赞'}</div></div>`;
+                }
+                html += `<div class="${t}-item${type ? ' reply-add' : ''}${x.top ? ' author-announcement' : ''}">
+                    <div class="${t}-header">
+                        <div class="username">${x.username}</div>
+                        ${x.isAuthor == 1 ? '<div class="reply-label">作者</div>' : ''}
+                        ${user_badges}
+                        ${author_agree}
+                    </div>
+                    <div class="comment-content">${formatChineseText(replaceEmoticons(x.content))}</div>
+                    ${info}
+                    ${replyHtml}
+                </div>`;
+            }
+            if (t == 'comment' && html == '') {
+                html = `<div style="text-align:center;padding:10px;color:#666;font-size:14px;">暂无评论</div>`;
+            }
+            return html;
+        }
+
+        function loadUrl() {
+            const JsonData = getJson(currentUrl);
+            const html = createCommentHtml(JsonData);
+            document.getElementById('commentsContainer').innerHTML = html;
+            window.scrollTo(0, 0);
+            const loader = document.querySelector('.loading-more');
+            wrongi--;
+            if (loader && wrongi > 0) {
+                java.longToast('正在重试倒数第' + wrongi + '次....');
+                loadUrl();
+                loader.onclick = () => {
+                    java.longToast('正在重试....');
+                    loader.textContent = '加载中....';
+                    loadUrl();
+                };
+            } else {
+                wrongi = 3;
+            }
+            openReply();
+        }
+
+        function createCommentHtml(JsonData) {
+            if (JsonData && typeof JsonData !== 'string') {
+                document.querySelector('.commentTotal').textContent = '共' + JsonData.commentTotal + '条评论';
+                let html = '';
+                if (page >= 2) html = '';
+                html = createHtml(JsonData.list, 'comment');
+                return html;
+            } else {
+                const loader = document.createElement('div');
+                loader.className = 'loading-more';
+                loader.style.cssText = 'text-align:center;padding:10px;color:#666;font-size:14px;';
+                loader.textContent = typeof JsonData === 'string' ? JsonData : '加载失败，点击重试';
+                loader.style.color = '#f00';
+                return loader.outerHTML;
+            }
+        }
+
+        function openReply() {
+            document.querySelectorAll('.load-more-replies, .close-more-replies').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const className = this.className;
+                    if (/load-more-replies/.test(className)) {
+                        const repliesSection = e.target.parentNode;
+                        const content = this.textContent;
+                        const totalnum = Number(content.match(/共(\d+)/)[1]);
+                        const dataid = this.dataset.id;
+                        let datanum = Number(this.dataset.num);
+                        if (datanum < totalnum) {
+                            const url = `${baseReplyUrl},{"method":"POST","body":"versionCode=477&commentId=${dataid}&offset=${datanum}&limit=20&isBackend=2&novelId=${bid}&chapterId=${cid}"}`;
+                            this.insertAdjacentHTML('beforebegin', createHtml(getReplyJson(url), 'reply', 1));
+                            this.dataset.num = datanum + 20;
+                            const synum = Number(content.match(/还剩(\d+)/)[1]) - 20;
+                            if (synum > 0) {
+                                this.textContent = content.replace(/还剩\d+/, '还剩' + synum);
+                            } else {
+                                e.target.nextElementSibling.classList.remove('hide');
+                                this.classList.add('hide');
+                            }
+                        } else {
+                            document.querySelectorAll('.reply-add').forEach(x => x.classList.remove('hide'));
+                            e.target.nextElementSibling.classList.remove('hide');
+                            this.classList.add('hide');
+                        }
+                    } else if (/close-more/.test(className)) {
+                        this.classList.add('hide');
+                        e.target.previousElementSibling.classList.remove('hide');
+                        document.querySelectorAll('.reply-add').forEach(x => x.classList.add('hide'));
+                    }
+                });
+            });
+        }
+
+        function bindTabs() {
+            if (isPara) return;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
+                    this.classList.add('active');
+                    const sortDropdown = document.getElementById('sortDropdown');
+                    if (type !== 'comment') {
+                        sortDropdown.style.display = 'none';
+                    } else {
+                        sortDropdown.style.display = 'inline-block';
+                    }
+                    commentTotal = 0;
+                    nocommentTotal = 0;
+                    page = 1;
+                    hasMore = true;
+                    if (type === 'long') {
+                        currentUrl = `https://android.jjwxc.net/comment/getLongCommentList,{"method":"POST","body":"versionCode=477&limit=100&offset=0&novelId=${bid}&chapterId=${cid}"}`;
+                    } else if (type === 'featured') {
+                        currentUrl = `${baseCommentUrl},{"method":"POST","body":"versionCode=477&limit=100&authorLike=1&offset=0&novelId=${bid}&chapterId=${cid}"}`;
+                    } else {
+                        currentUrl = `${baseCommentUrl}?versionCode=477&limit=50&offset=0&commentSort=${order}&novelId=${bid}&chapterId=${cid}`;
+                        if (vip == '1') {
+                            currentUrl = `https://s8-static.jjwxc.net/comment_json.php?commentSort=${order}&chapterid=${cid}&novelid=${bid}&offset=0&limit=20`;
+                        }
+                    }
+                    loadUrl();
+                });
+            });
+        }
+
+        function bindSort() {
+            const sortBtn = document.querySelector('.sort-btn');
+            if (!sortBtn) return;
+            sortBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const content = document.getElementById('sortContent');
+                content.style.display = content.style.display === 'block' ? 'none' : 'block';
+            });
+            document.addEventListener('click', function() {
+                document.getElementById('sortContent').style.display = 'none';
+            });
+            document.getElementById('sortContent').addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            document.querySelectorAll('#sortContent a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelectorAll('#sortContent i').forEach(b => b.classList.remove('fa-check'));
+                    this.querySelector('i').className = 'fas fa-check';
+                    const sortText = this.textContent.trim();
+                    commentTotal = 0;
+                    nocommentTotal = 0;
+                    page = 1;
+                    hasMore = true;
+                    if (/倒序/.test(sortText)) {
+                        order = 0;
+                    } else if (/正序/.test(sortText)) {
+                        order = 1;
+                    } else {
+                        order = 2;
+                    }
+                    localStorage.setItem('commentSort', order);
+                    currentUrl = currentUrl.replace(/offset=\d+/, 'offset=0').replace(/commentSort=\d+/, 'commentSort=' + order);
+                    loadUrl();
+                    java.longToast('切换至：' + sortText);
+                    document.getElementById('sortContent').style.display = 'none';
+                });
+            });
+        }
+
+        function bindTheme() {
+            document.getElementById('themeToggle').addEventListener('click', function(e) {
+                e.stopPropagation();
+                document.getElementById('themePanel').classList.toggle('show');
+            });
+            document.addEventListener('click', function() {
+                document.getElementById('themePanel').classList.remove('show');
+            });
+            document.getElementById('themePanel').addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            document.querySelectorAll('.theme-option').forEach(opt => {
+                opt.addEventListener('click', function() {
+                    const theme = this.dataset.theme;
+                    document.body.className = 'theme-' + theme;
+                    localStorage.setItem('jjwxc_theme', theme);
+                    document.getElementById('themePanel').classList.remove('show');
+                });
+            });
+        }
+
+        function bindScroll() {
+            window.addEventListener('scroll', function() {
+                clearTimeout(window.scrollTimer);
+                window.scrollTimer = setTimeout(checkScrollBottom, 100);
+            });
+            document.getElementById('top').addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+            document.getElementById('down').addEventListener('click', () => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
+        }
+
+        function checkScrollBottom() {
+            if (isLoading || !hasMore) return;
+            const lastComment = document.querySelector('.comment-item:last-of-type');
+            if (!lastComment) return;
+            const windowHeight = window.innerHeight;
+            const documentHeight = document.documentElement.scrollHeight;
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            if (documentHeight - (scrollTop + windowHeight) < 100) {
+                loadNextPage();
+            }
+        }
+
+        function loadNextPage() {
+            if (isLoading || !hasMore) return;
+            page++;
+            if (page > pageTotal) {
+                hasMore = false;
+                const noMore = document.createElement('div');
+                noMore.className = 'no-more';
+                noMore.textContent = '没有更多评论了';
+                noMore.style.cssText = 'text-align:center;padding:10px;color:#999;font-size:14px;';
+                document.getElementById('commentsContainer')?.appendChild(noMore);
+                return;
+            }
+            isLoading = true;
+            const loader = document.createElement('div');
+            loader.className = 'loading-more';
+            loader.textContent = '加载 第' + page + '页 中...';
+            loader.style.cssText = 'text-align:center;padding:10px;color:#666;font-size:14px;';
+            const container = document.getElementById('commentsContainer') || document.body;
+            container.appendChild(loader);
+            setTimeout(() => {
+                fetchMoreComments()
+                    .then(() => {
+                        container.removeChild(loader);
+                        isLoading = false;
+                    })
+                    .catch(() => {
+                        loader.textContent = '加载失败，点击重试';
+                        loader.style.color = '#f00';
+                        loader.onclick = () => {
+                            container.removeChild(loader);
+                            isLoading = false;
+                            page--;
+                            loadUrl();
+                        };
+                    });
+            }, 100);
+        }
+
+        function fetchMoreComments() {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const offsetMatch = currentUrl.match(/offset=(\d+)/);
+                    if (!offsetMatch && vip == '1') {
+                        currentUrl = currentUrl.replace(/(chapterid=\d+&novelid=\d+)/, '$1&offset=0&limit=20');
+                    }
+                    const offset = Number(currentUrl.match(/offset=(\d+)/)?.[1] ?? 0);
+                    const limit = Number(currentUrl.match(/limit=(\d+)/)?.[1] ?? 20);
+                    const newOffset = offset + limit;
+                    currentUrl = currentUrl.replace(/offset=\d+/, 'offset=' + newOffset);
+                    const htmlString = createCommentHtml(getJson(currentUrl));
+                    const container = document.getElementById('commentsContainer') || document.body;
+                    const loader = container.querySelector('.loading-more');
+                    if (loader) {
+                        loader.insertAdjacentHTML('beforebegin', htmlString);
+                    } else {
+                        container.insertAdjacentHTML('beforeend', htmlString);
+                    }
+                    openReply();
+                    resolve();
+                }, 1000);
+            });
+        }
+
+        function init() {
+            buildTabBar();
+            bindTabs();
+            bindSort();
+            bindTheme();
+            bindScroll();
+            loadUrl();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+    </script>
+</body>
+</html>
